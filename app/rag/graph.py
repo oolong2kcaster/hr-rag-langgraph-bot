@@ -6,7 +6,7 @@ from typing import Literal
 from langgraph.graph import END, START, StateGraph
 
 from app.config import Settings
-from app.rag.citations import ensure_citation_note, format_context
+from app.rag.citations import ensure_citation_note, format_context, remap_answer_citations
 from app.rag.llm import OpenAIClients
 from app.rag.prompts import ANSWER_SYSTEM_PROMPT, build_answer_prompt, build_rewrite_prompt
 from app.rag.retriever import HybridRetriever
@@ -83,8 +83,8 @@ class HRRAGGraph:
 
     def rerank_and_grade(self, state: RAGState) -> RAGState:
         docs = state.get("retrieved_docs", [])
-        ranked = sorted(docs, key=lambda d: d.get("score", 0.0), reverse=True)
-        top_score = float(ranked[0].get("score", 0.0)) if ranked else 0.0
+        ranked = docs
+        top_score = max((float(d.get("score", 0.0)) for d in docs), default=0.0)
         needs_retry = top_score < self.settings.min_relevance_score and state.get("retry_count", 0) < 1
         confidence = min(1.0, max(0.0, top_score))
         return {"ranked_docs": ranked, "confidence": confidence, "needs_retry": needs_retry}
@@ -124,6 +124,7 @@ class HRRAGGraph:
     def verify_answer(self, state: RAGState) -> RAGState:
         citations = state.get("citations", [])
         answer = ensure_citation_note(state.get("answer", ""), citations)
+        answer = remap_answer_citations(answer, citations)
         cited = [c["label"] for c in citations if f"[{c['label']}]" in answer]
         verification = {
             "has_context": bool(state.get("context")),

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     retrieval_top_k: int = Field(default=6, alias="RETRIEVAL_TOP_K")
     semantic_candidates: int = Field(default=18, alias="SEMANTIC_CANDIDATES")
+    retrieval_neighbor_window: int = Field(default=1, alias="RETRIEVAL_NEIGHBOR_WINDOW")
     max_context_chars: int = Field(default=9000, alias="MAX_CONTEXT_CHARS")
     min_relevance_score: float = Field(default=0.20, alias="MIN_RELEVANCE_SCORE")
 

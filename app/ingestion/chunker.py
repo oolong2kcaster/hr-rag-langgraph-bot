@@ -7,6 +7,11 @@ from pathlib import Path
 from app.ingestion.loader import agent_id_for_file, sha256_file
 from app.ingestion.models import DocumentChunk, RawPage
 
+LEGAL_SECTION_PATTERN = re.compile(
+    r"^\s*(?:điều\s+\d+(?:[./]\d+)*|khoản\s+\d+(?:[./]\d+)*|[a-zA-Z]\.)\s*",
+    flags=re.IGNORECASE,
+)
+
 
 def clean_text(text: str) -> str:
     text = text.replace("\x00", " ")
@@ -15,15 +20,26 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-def split_text(text: str, chunk_size: int = 900, chunk_overlap: int = 160) -> list[str]:
-    text = clean_text(text)
-    if not text:
-        return []
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be > 0")
-    if chunk_overlap >= chunk_size:
-        raise ValueError("chunk_overlap must be smaller than chunk_size")
+def _split_legal_sections(text: str) -> list[str]:
+    lines = [line.rstrip() for line in text.splitlines()]
+    marker_count = sum(1 for line in lines if LEGAL_SECTION_PATTERN.match(line))
+    if marker_count < 2:
+        return [text]
 
+    sections: list[str] = []
+    current: list[str] = []
+    for line in lines:
+        if LEGAL_SECTION_PATTERN.match(line) and current:
+            sections.append("\n".join(current).strip())
+            current = [line]
+        else:
+            current.append(line)
+    if current:
+        sections.append("\n".join(current).strip())
+    return [section for section in sections if section]
+
+
+def _split_section_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     chunks: list[str] = []
     current = ""
@@ -68,6 +84,22 @@ def split_text(text: str, chunk_size: int = 900, chunk_overlap: int = 160) -> li
             previous_tail = chunk[-chunk_overlap:]
         chunks = with_overlap
 
+    return [c for c in chunks if c.strip()]
+
+
+def split_text(text: str, chunk_size: int = 900, chunk_overlap: int = 160) -> list[str]:
+    text = clean_text(text)
+    if not text:
+        return []
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be > 0")
+    if chunk_overlap >= chunk_size:
+        raise ValueError("chunk_overlap must be smaller than chunk_size")
+
+    sections = _split_legal_sections(text)
+    chunks: list[str] = []
+    for section in sections:
+        chunks.extend(_split_section_text(section, chunk_size=chunk_size, chunk_overlap=chunk_overlap))
     return [c for c in chunks if c.strip()]
 
 

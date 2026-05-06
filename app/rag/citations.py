@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 
 def source_label(index: int) -> str:
     return f"S{index}"
@@ -34,6 +36,7 @@ def format_context(docs: list[dict], max_chars: int) -> tuple[str, list[dict]]:
                 "chunk_index": doc.get("chunk_index"),
                 "agent_id": doc.get("agent_id"),
                 "score": round(float(doc.get("score", 0.0)), 4),
+                "context_text": excerpt,
                 "excerpt": text[:360].replace("\n", " "),
             }
         )
@@ -47,3 +50,48 @@ def ensure_citation_note(answer: str, citations: list[dict]) -> str:
         return answer
     labels = ", ".join(f"[{c['label']}]" for c in citations[:3])
     return f"{answer}\n\nNguồn tham khảo chính: {labels}."
+
+
+def _tokens(text: str) -> set[str]:
+    return set(re.findall(r"[\wÀ-ỹ]+", (text or "").lower(), flags=re.UNICODE))
+
+
+def _best_label_for_sentence(sentence: str, citations: list[dict]) -> str | None:
+    sentence_tokens = _tokens(re.sub(r"\[S\d+\]", " ", sentence))
+    if not sentence_tokens:
+        return None
+
+    best_label: str | None = None
+    best_score = 0.0
+    for citation in citations:
+        source_text = str(citation.get("context_text") or citation.get("excerpt") or "")
+        source_tokens = _tokens(source_text)
+        if not source_tokens:
+            continue
+        overlap = sentence_tokens.intersection(source_tokens)
+        if not overlap:
+            continue
+        score = len(overlap) / max(len(sentence_tokens), 1)
+        if score > best_score:
+            best_score = score
+            best_label = str(citation.get("label"))
+    return best_label
+
+
+def remap_answer_citations(answer: str, citations: list[dict]) -> str:
+    if not answer or not citations:
+        return answer
+
+    remapped_lines: list[str] = []
+    for line in answer.splitlines(keepends=True):
+        labels = re.findall(r"\[(S\d+)\]", line)
+        if not labels:
+            remapped_lines.append(line)
+            continue
+        best = _best_label_for_sentence(line, citations)
+        if not best:
+            remapped_lines.append(line)
+            continue
+        replaced = re.sub(r"(?:\s*\[S\d+\])+", f" [{best}]", line)
+        remapped_lines.append(replaced)
+    return "".join(remapped_lines)
