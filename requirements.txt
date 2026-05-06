@@ -1,0 +1,15 @@
+openai>=2.34.0
+qdrant-client>=1.17.1
+langgraph>=1.1.10
+typer>=0.25.1
+rich>=15.0.0
+pydantic>=2.13.3
+pydantic-settings>=2.14.0
+python-dotenv>=1.2.2
+pymupdf>=1.27.2.3
+pytesseract>=0.3.13
+Pillow>=12.2.0
+rank-bm25>=0.2.2
+numpy>=2.4.4
+python-slugify>=8.0.4
+slack-bolt>=1.28.0

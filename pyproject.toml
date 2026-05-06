@@ -1,0 +1,9 @@
+[project]
+name = "hr-rag-langgraph-bot"
+version = "0.1.0"
+description = "Production-style Phase 1 HR RAG bot using LangGraph and Qdrant"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
