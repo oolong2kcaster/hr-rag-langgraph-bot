@@ -9,7 +9,9 @@ from app.storage.qdrant_store import QdrantVectorStore
 def list_document_agents(settings: Settings) -> list[dict]:
     store = QdrantVectorStore(settings)
     payloads = store.scroll_payloads(limit=10000)
-    agents: dict[str, dict] = defaultdict(lambda: {"chunks": 0, "sources": set(), "pages": set()})
+    agents: dict[str, dict] = defaultdict(
+        lambda: {"chunks": 0, "sources": set(), "pages": set()}
+    )
 
     for payload in payloads:
         agent_id = payload.get("agent_id") or "unknown"

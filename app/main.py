@@ -11,12 +11,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-warnings.filterwarnings(
-    "ignore",
-    message="The default value of `allowed_objects` will change in a future version.*",
-    category=LangChainPendingDeprecationWarning,
-)
-
 from app.config import get_settings
 from app.ingestion.indexer import ingest_path
 from app.ingestion.validator import validate_index
@@ -24,6 +18,12 @@ from app.rag.agents import list_document_agents
 from app.rag.graph import HRRAGGraph
 from app.storage.qdrant_store import QdrantVectorStore
 from app.utils.logging import configure_logging
+
+warnings.filterwarnings(
+    "ignore",
+    message="The default value of `allowed_objects` will change in a future version.*",
+    category=LangChainPendingDeprecationWarning,
+)
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 console = Console()
@@ -37,7 +37,9 @@ def bootstrap():
 
 @app.command()
 def ingest(
-    path: Path = typer.Option(Path("data/raw"), "--path", "-p", help="File or folder to ingest"),
+    path: Path = typer.Option(
+        Path("data/raw"), "--path", "-p", help="File or folder to ingest"
+    ),
 ):
     """Load documents, OCR scanned PDFs if needed, chunk, embed, and upsert into Qdrant."""
     settings = bootstrap()
@@ -52,7 +54,7 @@ def validate(
         "--query",
         "-q",
         help="Optional retrieval test query",
-    )
+    ),
 ):
     """Validate indexed data and optionally run a retrieval smoke test."""
     settings = bootstrap()
@@ -84,7 +86,9 @@ def agents():
 @app.command()
 def ask(
     question: str = typer.Argument(..., help="Question to ask the HR RAG bot"),
-    agent: Optional[str] = typer.Option(None, "--agent", "-a", help="Limit retrieval to one document-agent"),
+    agent: Optional[str] = typer.Option(
+        None, "--agent", "-a", help="Limit retrieval to one document-agent"
+    ),
     raw: bool = typer.Option(False, "--raw", help="Print raw JSON state"),
 ):
     """Ask from terminal using production-style LangGraph RAG flow."""
@@ -96,7 +100,9 @@ def ask(
         console.print_json(json.dumps(result, ensure_ascii=False, default=str))
         return
 
-    console.print(Panel(result.get("answer") or "", title="AI Answer", border_style="green"))
+    console.print(
+        Panel(result.get("answer") or "", title="AI Answer", border_style="green")
+    )
 
     citations = result.get("citations", [])
     if citations:
@@ -121,7 +127,13 @@ def ask(
         console.print("[yellow]No evidence found from indexed documents.[/yellow]")
 
     verification = result.get("verification", {})
-    console.print(Panel(json.dumps(verification, ensure_ascii=False, indent=2), title="Verification", border_style="blue"))
+    console.print(
+        Panel(
+            json.dumps(verification, ensure_ascii=False, indent=2),
+            title="Verification",
+            border_style="blue",
+        )
+    )
 
 
 @app.command("reset-index")

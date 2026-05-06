@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qm
@@ -26,11 +25,17 @@ class QdrantVectorStore:
 
         self.client.create_collection(
             collection_name=self.collection,
-            vectors_config=qm.VectorParams(size=vector_size, distance=qm.Distance.COSINE),
+            vectors_config=qm.VectorParams(
+                size=vector_size, distance=qm.Distance.COSINE
+            ),
         )
-        logger.info("Created Qdrant collection=%s vector_size=%s", self.collection, vector_size)
+        logger.info(
+            "Created Qdrant collection=%s vector_size=%s", self.collection, vector_size
+        )
 
-    def upsert_chunks(self, chunks: list[DocumentChunk], vectors: list[list[float]]) -> None:
+    def upsert_chunks(
+        self, chunks: list[DocumentChunk], vectors: list[list[float]]
+    ) -> None:
         if len(chunks) != len(vectors):
             raise ValueError("chunks and vectors length mismatch")
         if not chunks:
@@ -46,7 +51,9 @@ class QdrantVectorStore:
             for chunk, vector in zip(chunks, vectors, strict=True)
         ]
         self.client.upsert(collection_name=self.collection, points=points)
-        logger.info("Upserted %s chunks into collection=%s", len(points), self.collection)
+        logger.info(
+            "Upserted %s chunks into collection=%s", len(points), self.collection
+        )
 
     def count(self) -> int:
         try:
@@ -61,10 +68,14 @@ class QdrantVectorStore:
             self.client.delete_collection(collection_name=self.collection)
             logger.warning("Deleted Qdrant collection=%s", self.collection)
 
-    def scroll_payloads(self, limit: int = 5000, agent_id: str | None = None) -> list[dict]:
-        must = []
+    def scroll_payloads(
+        self, limit: int = 5000, agent_id: str | None = None
+    ) -> list[dict]:
+        must: list[qm.Condition] = []
         if agent_id:
-            must.append(qm.FieldCondition(key="agent_id", match=qm.MatchValue(value=agent_id)))
+            must.append(
+                qm.FieldCondition(key="agent_id", match=qm.MatchValue(value=agent_id))
+            )
         scroll_filter = qm.Filter(must=must) if must else None
 
         points: list[dict] = []
@@ -92,30 +103,21 @@ class QdrantVectorStore:
         limit: int,
         agent_id: str | None = None,
     ) -> list[dict]:
-        must = []
+        must: list[qm.Condition] = []
         if agent_id:
-            must.append(qm.FieldCondition(key="agent_id", match=qm.MatchValue(value=agent_id)))
+            must.append(
+                qm.FieldCondition(key="agent_id", match=qm.MatchValue(value=agent_id))
+            )
         query_filter = qm.Filter(must=must) if must else None
-
-        if hasattr(self.client, "query_points"):
-            # qdrant-client >= 1.17 removed `search` in favor of `query_points`.
-            response = self.client.query_points(
-                collection_name=self.collection,
-                query=vector,
-                query_filter=query_filter,
-                limit=limit,
-                with_payload=True,
-                with_vectors=False,
-            )
-            hits = response.points
-        else:
-            hits = self.client.search(
-                collection_name=self.collection,
-                query_vector=vector,
-                query_filter=query_filter,
-                limit=limit,
-                with_payload=True,
-            )
+        response = self.client.query_points(
+            collection_name=self.collection,
+            query=vector,
+            query_filter=query_filter,
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        )
+        hits = response.points
         results: list[dict] = []
         for hit in hits:
             payload = dict(hit.payload or {})

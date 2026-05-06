@@ -58,7 +58,9 @@ def _split_section_text(text: str, chunk_size: int, chunk_overlap: int) -> list[
                 end = min(start + chunk_size, len(paragraph))
                 window = paragraph[start:end]
                 # Prefer ending on a sentence boundary when possible.
-                boundary = max(window.rfind(". "), window.rfind("; "), window.rfind("\n"))
+                boundary = max(
+                    window.rfind(". "), window.rfind("; "), window.rfind("\n")
+                )
                 if boundary > int(chunk_size * 0.55) and end < len(paragraph):
                     end = start + boundary + 1
                 chunks.append(paragraph[start:end].strip())
@@ -99,11 +101,17 @@ def split_text(text: str, chunk_size: int = 900, chunk_overlap: int = 160) -> li
     sections = _split_legal_sections(text)
     chunks: list[str] = []
     for section in sections:
-        chunks.extend(_split_section_text(section, chunk_size=chunk_size, chunk_overlap=chunk_overlap))
+        chunks.extend(
+            _split_section_text(
+                section, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            )
+        )
     return [c for c in chunks if c.strip()]
 
 
-def chunks_from_pages(pages: list[RawPage], chunk_size: int, chunk_overlap: int) -> list[DocumentChunk]:
+def chunks_from_pages(
+    pages: list[RawPage], chunk_size: int, chunk_overlap: int
+) -> list[DocumentChunk]:
     result: list[DocumentChunk] = []
     if not pages:
         return result
@@ -114,7 +122,9 @@ def chunks_from_pages(pages: list[RawPage], chunk_size: int, chunk_overlap: int)
 
     global_index = 0
     for page in pages:
-        for text in split_text(page.text, chunk_size=chunk_size, chunk_overlap=chunk_overlap):
+        for text in split_text(
+            page.text, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        ):
             stable = f"{doc_sha}:{page.page}:{global_index}:{text[:80]}"
             chunk_id = str(uuid.uuid5(uuid.NAMESPACE_URL, stable))
             result.append(

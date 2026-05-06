@@ -30,20 +30,27 @@ def build_slack_app() -> App:
     if not settings.slack_bot_token or not settings.slack_signing_secret:
         raise RuntimeError("Missing SLACK_BOT_TOKEN or SLACK_SIGNING_SECRET")
 
-    slack_app = App(token=settings.slack_bot_token, signing_secret=settings.slack_signing_secret)
+    slack_app = App(
+        token=settings.slack_bot_token, signing_secret=settings.slack_signing_secret
+    )
     rag_graph = HRRAGGraph(settings)
 
     @slack_app.event("app_mention")
     def handle_app_mention(event, say):  # noqa: ANN001
         text = event.get("text", "")
         result = rag_graph.invoke(text)
-        answer = result.get("answer", "Tôi chưa tìm thấy thông tin trong tài liệu đã nạp.")
+        answer = result.get(
+            "answer", "Tôi chưa tìm thấy thông tin trong tài liệu đã nạp."
+        )
         sources = result.get("citations", [])[:3]
         source_lines = [
             f"• [{s['label']}] {s['source_name']} - page {s['page']} - chunk {s['chunk_index']}"
             for s in sources
         ]
-        say(answer + ("\n\n*Nguồn:*\n" + "\n".join(source_lines) if source_lines else ""))
+        say(
+            answer
+            + ("\n\n*Nguồn:*\n" + "\n".join(source_lines) if source_lines else "")
+        )
 
     return slack_app
 

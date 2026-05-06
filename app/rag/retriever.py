@@ -3,11 +3,10 @@ from __future__ import annotations
 import logging
 import math
 import re
-from collections import defaultdict
 from typing import Any
 
 import numpy as np
-from rank_bm25 import BM25Okapi
+from rank_bm25 import BM25Okapi  # type: ignore[import-untyped]
 
 from app.config import Settings
 from app.rag.llm import OpenAIClients
@@ -28,7 +27,9 @@ def normalize_scores(items: list[dict[str, Any]], key: str) -> dict[str, float]:
     min_v, max_v = min(values), max(values)
     if math.isclose(min_v, max_v):
         return {str(i["id"]): 1.0 if max_v > 0 else 0.0 for i in items}
-    return {str(i["id"]): (float(i.get(key, 0.0)) - min_v) / (max_v - min_v) for i in items}
+    return {
+        str(i["id"]): (float(i.get(key, 0.0)) - min_v) / (max_v - min_v) for i in items
+    }
 
 
 class HybridRetriever:
@@ -59,7 +60,9 @@ class HybridRetriever:
         self._check_limits(ordered, top_k=top_k)
         return ordered
 
-    def _bm25(self, query: str, corpus: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    def _bm25(
+        self, query: str, corpus: list[dict[str, Any]], limit: int
+    ) -> list[dict[str, Any]]:
         if not corpus:
             return []
         tokenized = [tokenize(doc.get("text", "")) for doc in corpus]
@@ -88,7 +91,10 @@ class HybridRetriever:
             sem = semantic_norm.get(item_id, 0.0)
             lex = lexical_norm.get(item_id, 0.0)
             item["score"] = round(0.68 * sem + 0.32 * lex, 6)
-            item["score_breakdown"] = {"semantic": round(sem, 4), "lexical": round(lex, 4)}
+            item["score_breakdown"] = {
+                "semantic": round(sem, 4),
+                "lexical": round(lex, 4),
+            }
         return list(by_id.values())
 
     def _expand_with_neighbors(
@@ -100,14 +106,20 @@ class HybridRetriever:
         if not top_docs or window <= 0:
             return top_docs
 
-        by_id: dict[str, dict[str, Any]] = {str(doc["id"]): dict(doc) for doc in top_docs}
+        by_id: dict[str, dict[str, Any]] = {
+            str(doc["id"]): dict(doc) for doc in top_docs
+        }
 
         by_doc_and_chunk: dict[tuple[str, str, int], dict[str, Any]] = {}
         for doc in corpus:
             chunk_index = doc.get("chunk_index")
             if chunk_index is None:
                 continue
-            key = (str(doc.get("agent_id") or ""), str(doc.get("source_path") or ""), int(chunk_index))
+            key = (
+                str(doc.get("agent_id") or ""),
+                str(doc.get("source_path") or ""),
+                int(chunk_index),
+            )
             by_doc_and_chunk[key] = doc
 
         for doc in top_docs:

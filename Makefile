@@ -5,7 +5,7 @@ DOCS ?= data/raw
 Q ?=
 AGENT ?=
 
-.PHONY: help dev prod build rebuild start stop restart logs app-logs shell ingest validate ask agents test clean clean-index
+.PHONY: help dev prod build rebuild start stop restart logs app-logs shell ingest validate ask agents test lint lint-fix clean clean-index
 
 help:
 	@echo "HR RAG LangGraph Bot - commands"
@@ -25,6 +25,8 @@ help:
 	@echo "  make ask Q='Nội quy nghỉ hằng năm như thế nào?'"
 	@echo "  make agents             List document-agents loaded into vector store"
 	@echo "  make test               Run tests"
+	@echo "  make lint               Run ruff format/check and mypy in app container"
+	@echo "  make lint-fix           Auto-fix with ruff format/check before mypy"
 	@echo "  make clean-index        Delete local processed reports and Qdrant collection"
 	@echo "  make clean              Stop and remove docker volumes"
 
@@ -79,6 +81,12 @@ agents: .env
 
 test: .env
 	$(COMPOSE) run --rm $(APP) pytest -q
+
+lint: .env
+	$(COMPOSE) run --rm $(APP) python -m ruff format --check app/ && $(COMPOSE) run --rm $(APP) python -m ruff check app/ && $(COMPOSE) run --rm $(APP) python -m mypy app/
+
+lint-fix: .env
+	$(COMPOSE) run --rm $(APP) python -m ruff format app/ && $(COMPOSE) run --rm $(APP) python -m ruff check --fix app/ && $(COMPOSE) run --rm $(APP) python -m mypy app/
 
 clean-index: .env
 	$(COMPOSE) run --rm $(APP) python -m app.main reset-index --yes

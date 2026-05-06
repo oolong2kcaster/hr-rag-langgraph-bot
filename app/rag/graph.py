@@ -6,9 +6,17 @@ from typing import Literal
 from langgraph.graph import END, START, StateGraph
 
 from app.config import Settings
-from app.rag.citations import ensure_citation_note, format_context, remap_answer_citations
+from app.rag.citations import (
+    ensure_citation_note,
+    format_context,
+    remap_answer_citations,
+)
 from app.rag.llm import OpenAIClients
-from app.rag.prompts import ANSWER_SYSTEM_PROMPT, build_answer_prompt, build_rewrite_prompt
+from app.rag.prompts import (
+    ANSWER_SYSTEM_PROMPT,
+    build_answer_prompt,
+    build_rewrite_prompt,
+)
 from app.rag.retriever import HybridRetriever
 from app.rag.state import RAGState
 
@@ -63,7 +71,10 @@ class HRRAGGraph:
         try:
             rewritten = self.llm.chat(
                 [
-                    {"role": "system", "content": "Bạn rewrite query tìm kiếm, chỉ trả về query."},
+                    {
+                        "role": "system",
+                        "content": "Bạn rewrite query tìm kiếm, chỉ trả về query.",
+                    },
                     {"role": "user", "content": build_rewrite_prompt(question)},
                 ],
                 temperature=0.0,
@@ -85,11 +96,20 @@ class HRRAGGraph:
         docs = state.get("retrieved_docs", [])
         ranked = docs
         top_score = max((float(d.get("score", 0.0)) for d in docs), default=0.0)
-        needs_retry = top_score < self.settings.min_relevance_score and state.get("retry_count", 0) < 1
+        needs_retry = (
+            top_score < self.settings.min_relevance_score
+            and state.get("retry_count", 0) < 1
+        )
         confidence = min(1.0, max(0.0, top_score))
-        return {"ranked_docs": ranked, "confidence": confidence, "needs_retry": needs_retry}
+        return {
+            "ranked_docs": ranked,
+            "confidence": confidence,
+            "needs_retry": needs_retry,
+        }
 
-    def route_after_grade(self, state: RAGState) -> Literal["retry_query", "compress_context"]:
+    def route_after_grade(
+        self, state: RAGState
+    ) -> Literal["retry_query", "compress_context"]:
         return "retry_query" if state.get("needs_retry") else "compress_context"
 
     def retry_query(self, state: RAGState) -> RAGState:
@@ -102,7 +122,9 @@ class HRRAGGraph:
         }
 
     def compress_context(self, state: RAGState) -> RAGState:
-        context, citations = format_context(state.get("ranked_docs", []), max_chars=self.settings.max_context_chars)
+        context, citations = format_context(
+            state.get("ranked_docs", []), max_chars=self.settings.max_context_chars
+        )
         return {"context": context, "citations": citations}
 
     def generate_answer(self, state: RAGState) -> RAGState:
@@ -115,7 +137,10 @@ class HRRAGGraph:
         answer = self.llm.chat(
             [
                 {"role": "system", "content": ANSWER_SYSTEM_PROMPT},
-                {"role": "user", "content": build_answer_prompt(state["question"], context)},
+                {
+                    "role": "user",
+                    "content": build_answer_prompt(state["question"], context),
+                },
             ],
             temperature=0.0,
         ).strip()

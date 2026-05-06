@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any, cast
 
 from openai import OpenAI
 
@@ -26,7 +27,7 @@ class OpenAIClients:
     def chat(self, messages: list[dict[str, str]], temperature: float = 0.0) -> str:
         response = self.client.chat.completions.create(
             model=self.settings.openai_chat_model,
-            messages=messages,
+            messages=cast(Any, messages),
             temperature=temperature,
         )
         return response.choices[0].message.content or ""
