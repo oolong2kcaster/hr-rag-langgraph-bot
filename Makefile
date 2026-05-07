@@ -74,7 +74,7 @@ validate: .env
 
 ask: .env
 	@if [ -z "$(Q)" ]; then echo "Usage: make ask Q='your question'"; exit 1; fi
-	$(COMPOSE) run --rm $(APP) python -m app.main ask "$(Q)" $(if $(AGENT),--agent "$(AGENT)",)
+	$(COMPOSE) run --rm $(if $(OPENAI_BASE_URL),-e OPENAI_BASE_URL="$(OPENAI_BASE_URL)",) $(APP) python -m app.main ask "$(Q)" $(if $(AGENT),--agent "$(AGENT)",)
 
 agents: .env
 	$(COMPOSE) run --rm $(APP) python -m app.main agents

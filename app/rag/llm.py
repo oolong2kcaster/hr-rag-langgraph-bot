@@ -15,7 +15,10 @@ class OpenAIClients:
                 "OPENAI_API_KEY is missing. Set it in .env before ingestion or asking questions."
             )
         self.settings = settings
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.client = OpenAI(
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url.rstrip("/"),
+        )
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         response = self.client.embeddings.create(
