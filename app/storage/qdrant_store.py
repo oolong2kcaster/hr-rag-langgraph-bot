@@ -17,6 +17,20 @@ class QdrantVectorStore:
         self.client = QdrantClient(url=settings.qdrant_url)
         self.collection = settings.qdrant_collection
 
+    def _build_filter(
+        self,
+        agent_id: str | None = None,
+        filters: dict[str, str | int | float | bool] | None = None,
+    ) -> qm.Filter | None:
+        must: list[qm.Condition] = []
+        if agent_id:
+            must.append(
+                qm.FieldCondition(key="agent_id", match=qm.MatchValue(value=agent_id))
+            )
+        for key, value in (filters or {}).items():
+            must.append(qm.FieldCondition(key=key, match=qm.MatchValue(value=value)))
+        return qm.Filter(must=must) if must else None
+
     def ensure_collection(self, vector_size: int) -> None:
         collections = self.client.get_collections().collections
         exists = any(c.name == self.collection for c in collections)
@@ -69,14 +83,12 @@ class QdrantVectorStore:
             logger.warning("Deleted Qdrant collection=%s", self.collection)
 
     def scroll_payloads(
-        self, limit: int = 5000, agent_id: str | None = None
+        self,
+        limit: int = 5000,
+        agent_id: str | None = None,
+        filters: dict[str, str | int | float | bool] | None = None,
     ) -> list[dict]:
-        must: list[qm.Condition] = []
-        if agent_id:
-            must.append(
-                qm.FieldCondition(key="agent_id", match=qm.MatchValue(value=agent_id))
-            )
-        scroll_filter = qm.Filter(must=must) if must else None
+        scroll_filter = self._build_filter(agent_id=agent_id, filters=filters)
 
         points: list[dict] = []
         offset = None
@@ -102,13 +114,9 @@ class QdrantVectorStore:
         vector: list[float],
         limit: int,
         agent_id: str | None = None,
+        filters: dict[str, str | int | float | bool] | None = None,
     ) -> list[dict]:
-        must: list[qm.Condition] = []
-        if agent_id:
-            must.append(
-                qm.FieldCondition(key="agent_id", match=qm.MatchValue(value=agent_id))
-            )
-        query_filter = qm.Filter(must=must) if must else None
+        query_filter = self._build_filter(agent_id=agent_id, filters=filters)
         response = self.client.query_points(
             collection_name=self.collection,
             query=vector,

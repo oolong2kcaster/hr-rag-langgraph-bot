@@ -9,6 +9,7 @@ from rich.table import Table
 
 from app.config import Settings
 from app.ingestion.chunker import chunks_from_pages
+from app.ingestion.domain_detector import detect_domain_from_file
 from app.ingestion.loader import discover_files, load_pages, sha256_file
 from app.rag.llm import OpenAIClients, batched
 from app.storage.manifest import IngestManifest
@@ -38,6 +39,7 @@ def ingest_path(path: Path, settings: Settings) -> dict:
     table.add_column("Pages", justify="right")
     table.add_column("Chunks", justify="right")
     table.add_column("Agent ID")
+    table.add_column("Domain")
     table.add_column("Status")
 
     for file in files:
@@ -50,9 +52,14 @@ def ingest_path(path: Path, settings: Settings) -> dict:
             )
             if not chunks:
                 status = "skipped: no text extracted"
-                table.add_row(file.name, str(len(pages)), "0", "-", status)
+                table.add_row(file.name, str(len(pages)), "0", "-", "-", status)
                 logger.warning("No chunks extracted from %s", file)
                 continue
+
+            text_sample = "\n".join(page.text for page in pages[:3])[:2000]
+            domain = detect_domain_from_file(file.name, text_sample).value
+            for chunk in chunks:
+                chunk.domain = domain
 
             all_vectors: list[list[float]] = []
             for batch in batched([c.text for c in chunks], batch_size=64):
@@ -67,6 +74,7 @@ def ingest_path(path: Path, settings: Settings) -> dict:
                 "pages": len(pages),
                 "chunks": len(chunks),
                 "agent_id": chunks[0].agent_id,
+                "domain": domain,
                 "status": "ok",
             }
             manifest.append(doc_record)
@@ -74,7 +82,12 @@ def ingest_path(path: Path, settings: Settings) -> dict:
             total_chunks += len(chunks)
             total_pages += len(pages)
             table.add_row(
-                file.name, str(len(pages)), str(len(chunks)), chunks[0].agent_id, "ok"
+                file.name,
+                str(len(pages)),
+                str(len(chunks)),
+                chunks[0].agent_id,
+                domain,
+                "ok",
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Ingestion failed for %s", file)
@@ -85,10 +98,11 @@ def ingest_path(path: Path, settings: Settings) -> dict:
                 "pages": 0,
                 "chunks": 0,
                 "agent_id": "-",
+                "domain": "-",
                 "status": f"error: {exc}",
             }
             files_report.append(doc_record)
-            table.add_row(file.name, "0", "0", "-", f"error: {exc}")
+            table.add_row(file.name, "0", "0", "-", "-", f"error: {exc}")
 
     settings.processed_dir.mkdir(parents=True, exist_ok=True)
     report_path = settings.processed_dir / "ingest_report.json"

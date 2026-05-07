@@ -20,6 +20,7 @@ class DocumentChunk:
     chunk_index: int
     agent_id: str
     doc_sha256: str
+    domain: str = "unknown"
 
     def payload(self) -> dict[str, Any]:
         payload = asdict(self)

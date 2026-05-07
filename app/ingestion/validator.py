@@ -35,6 +35,7 @@ def validate_index(settings: Settings, query: str | None = None) -> dict:
     table.add_column("Page", justify="right")
     table.add_column("Chunk", justify="right")
     table.add_column("Agent")
+    table.add_column("Domain")
     table.add_column("Excerpt")
     for item in sample:
         table.add_row(
@@ -42,6 +43,7 @@ def validate_index(settings: Settings, query: str | None = None) -> dict:
             str(item.get("page")),
             str(item.get("chunk_index")),
             str(item.get("agent_id")),
+            str(item.get("domain")),
             (item.get("text") or "")[:100].replace("\n", " "),
         )
     console.print(table)

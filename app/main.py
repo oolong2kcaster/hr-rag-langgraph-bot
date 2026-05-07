@@ -89,12 +89,15 @@ def ask(
     agent: Optional[str] = typer.Option(
         None, "--agent", "-a", help="Limit retrieval to one document-agent"
     ),
+    domain: Optional[str] = typer.Option(
+        None, "--domain", "-d", help="Optional domain hint: policy | tax_2026"
+    ),
     raw: bool = typer.Option(False, "--raw", help="Print raw JSON state"),
 ):
     """Ask from terminal using production-style LangGraph RAG flow."""
     settings = bootstrap()
     graph = HRRAGGraph(settings)
-    result = graph.invoke(question=question, agent_id=agent)
+    result = graph.invoke(question=question, agent_id=agent, domain_hint=domain)
 
     if raw:
         console.print_json(json.dumps(result, ensure_ascii=False, default=str))

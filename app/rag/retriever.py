@@ -10,6 +10,7 @@ from rank_bm25 import BM25Okapi  # type: ignore[import-untyped]
 
 from app.config import Settings
 from app.rag.llm import OpenAIClients
+from app.rag.query_intent import DEFAULT_EXHAUSTIVE_KEYWORDS, is_exhaustive_question
 from app.storage.qdrant_store import QdrantVectorStore
 
 logger = logging.getLogger(__name__)
@@ -38,24 +39,43 @@ class HybridRetriever:
         self.llm = OpenAIClients(settings)
         self.store = QdrantVectorStore(settings)
 
-    def retrieve(self, query: str, agent_id: str | None = None) -> list[dict[str, Any]]:
+    def retrieve(
+        self,
+        query: str,
+        agent_id: str | None = None,
+        filters: dict[str, str | int | float | bool] | None = None,
+        exhaustive: bool | None = None,
+    ) -> list[dict[str, Any]]:
         query_vector = self.llm.embed([query])[0]
+        should_use_exhaustive = (
+            exhaustive
+            if exhaustive is not None
+            else is_exhaustive_question(query, DEFAULT_EXHAUSTIVE_KEYWORDS)
+        )
+        semantic_limit = self.settings.semantic_candidates
+        if should_use_exhaustive:
+            semantic_limit = max(self.settings.semantic_candidates, self.settings.retrieval_top_k * 2)
 
         semantic = self.store.search(
             query_vector,
-            limit=self.settings.semantic_candidates,
+            limit=semantic_limit,
             agent_id=agent_id,
+            filters=filters,
         )
 
         # Phase 1 hybrid lexical retrieval: BM25 over current Qdrant payloads.
-        corpus = self.store.scroll_payloads(limit=5000, agent_id=agent_id)
-        lexical = self._bm25(query, corpus, limit=self.settings.semantic_candidates)
+        corpus = self.store.scroll_payloads(limit=5000, agent_id=agent_id, filters=filters)
+        lexical = self._bm25(query, corpus, limit=semantic_limit)
 
         merged = self._merge(semantic, lexical)
         ranked = sorted(merged, key=lambda d: d.get("score", 0.0), reverse=True)
         top_k = max(1, int(self.settings.retrieval_top_k))
         top_docs = ranked[:top_k]
-        expanded = self._expand_with_neighbors(top_docs=top_docs, corpus=corpus)
+        expanded = self._expand_with_neighbors(
+            top_docs=top_docs,
+            corpus=corpus,
+            enabled=True,
+        )
         ordered = self._sort_for_context(expanded)
         self._check_limits(ordered, top_k=top_k)
         return ordered
@@ -101,9 +121,10 @@ class HybridRetriever:
         self,
         top_docs: list[dict[str, Any]],
         corpus: list[dict[str, Any]],
+        enabled: bool = True,
     ) -> list[dict[str, Any]]:
         window = max(0, int(self.settings.retrieval_neighbor_window))
-        if not top_docs or window <= 0:
+        if not enabled or not top_docs or window <= 0:
             return top_docs
 
         by_id: dict[str, dict[str, Any]] = {

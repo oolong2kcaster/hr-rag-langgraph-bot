@@ -31,3 +31,60 @@ Dự án phù hợp cho các hệ thống nội bộ như:
 - Tra cứu quy định công ty
 - Hỗ trợ onboarding nhân viên mới
 - Tự động hóa trả lời câu hỏi thường gặp từ tài liệu HR
+
+```
+hr-rag-langgraph-bot
+├─ .dockerignore
+├─ .ruff_cache
+│  ├─ 0.15.12
+│  │  └─ 6597517103441904632
+│  └─ CACHEDIR.TAG
+├─ Dockerfile
+├─ Makefile
+├─ README.md
+├─ app
+│  ├─ __init__.py
+│  ├─ config.py
+│  ├─ ingestion
+│  │  ├─ __init__.py
+│  │  ├─ chunker.py
+│  │  ├─ indexer.py
+│  │  ├─ loader.py
+│  │  ├─ models.py
+│  │  └─ validator.py
+│  ├─ main.py
+│  ├─ rag
+│  │  ├─ __init__.py
+│  │  ├─ agents.py
+│  │  ├─ citations.py
+│  │  ├─ graph.py
+│  │  ├─ llm.py
+│  │  ├─ prompts.py
+│  │  ├─ retriever.py
+│  │  └─ state.py
+│  ├─ slack_bot.py
+│  ├─ storage
+│  │  ├─ __init__.py
+│  │  ├─ manifest.py
+│  │  └─ qdrant_store.py
+│  └─ utils
+│     ├─ __init__.py
+│     └─ logging.py
+├─ data
+│  ├─ processed
+│  │  ├─ ingest_manifest.jsonl
+│  │  └─ ingest_report.json
+│  └─ raw
+│     └─ Caster_Tech_Viet_Nam_Noi_Quy_Lao_Dong.pdf
+├─ docker-compose.yml
+├─ logs
+│  └─ app.log
+├─ pyproject.toml
+├─ requirements.txt
+├─ scripts
+└─ tests
+   ├─ test_chunker.py
+   ├─ test_citations.py
+   └─ test_retriever_context_order.py
+
+```
