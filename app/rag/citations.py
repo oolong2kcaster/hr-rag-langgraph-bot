@@ -3,8 +3,11 @@ from __future__ import annotations
 import re
 
 
-def source_label(index: int) -> str:
-    return f"S{index}"
+def source_label(index: int, page: object) -> str:
+    page_text = str(page).strip() if page is not None else ""
+    if page_text:
+        return f"Page {page_text}"
+    return f"Source {index}"
 
 
 def format_context(docs: list[dict], max_chars: int) -> tuple[str, list[dict]]:
@@ -13,7 +16,7 @@ def format_context(docs: list[dict], max_chars: int) -> tuple[str, list[dict]]:
     total = 0
 
     for i, doc in enumerate(docs, start=1):
-        label = source_label(i)
+        label = source_label(i, doc.get("page"))
         text = (doc.get("text") or "").strip()
         if not text:
             continue
@@ -57,7 +60,7 @@ def _tokens(text: str) -> set[str]:
 
 
 def _best_label_for_sentence(sentence: str, citations: list[dict]) -> str | None:
-    sentence_tokens = _tokens(re.sub(r"\[S\d+\]", " ", sentence))
+    sentence_tokens = _tokens(re.sub(r"\[[^\]]+\]", " ", sentence))
     if not sentence_tokens:
         return None
 
@@ -82,16 +85,30 @@ def remap_answer_citations(answer: str, citations: list[dict]) -> str:
     if not answer or not citations:
         return answer
 
+    known_labels = {str(c.get("label", "")) for c in citations}
     remapped_lines: list[str] = []
     for line in answer.splitlines(keepends=True):
-        labels = re.findall(r"\[(S\d+)\]", line)
+        labels = re.findall(r"\[([^\[\]]+)\]", line)
         if not labels:
+            remapped_lines.append(line)
+            continue
+        has_citation = any(
+            label in known_labels
+            or re.fullmatch(r"S\d+", label) is not None
+            or re.fullmatch(r"(?i)(?:page|source)\s+\d+", label) is not None
+            for label in labels
+        )
+        if not has_citation:
             remapped_lines.append(line)
             continue
         best = _best_label_for_sentence(line, citations)
         if not best:
             remapped_lines.append(line)
             continue
-        replaced = re.sub(r"(?:\s*\[S\d+\])+", f" [{best}]", line)
+        replaced = re.sub(
+            r"(?:\s*\[(?:S\d+|(?i:page|source)\s+\d+)\])+",
+            f" [{best}]",
+            line,
+        )
         remapped_lines.append(replaced)
     return "".join(remapped_lines)

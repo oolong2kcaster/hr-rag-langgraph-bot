@@ -110,7 +110,7 @@ def ask(
     citations = result.get("citations", [])
     if citations:
         table = Table(title="Evidence / Sources")
-        table.add_column("Label")
+        table.add_column("Citation")
         table.add_column("Source")
         table.add_column("Page", justify="right")
         table.add_column("Chunk", justify="right")
