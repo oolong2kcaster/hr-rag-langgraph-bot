@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,8 +10,14 @@ class Settings(BaseSettings):
     )
 
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
-    openai_base_url: str = Field(
-        default="https://api.openai.com/v1", alias="OPENAI_BASE_URL"
+    openai_chat_api_key: str | None = Field(default=None, alias="OPENAI_CHAT_API_KEY")
+    openai_embedding_api_key: str | None = Field(
+        default=None, alias="OPENAI_EMBEDDING_API_KEY"
+    )
+    openai_base_url: str | None = Field(default=None, alias="OPENAI_BASE_URL")
+    openai_chat_base_url: str | None = Field(default=None, alias="OPENAI_CHAT_BASE_URL")
+    openai_embedding_base_url: str | None = Field(
+        default=None, alias="OPENAI_EMBEDDING_BASE_URL"
     )
     openai_chat_model: str = Field(default="gpt-4o-mini", alias="OPENAI_CHAT_MODEL")
     openai_embedding_model: str = Field(
@@ -39,6 +45,53 @@ class Settings(BaseSettings):
     slack_bot_token: str | None = Field(default=None, alias="SLACK_BOT_TOKEN")
     slack_signing_secret: str | None = Field(default=None, alias="SLACK_SIGNING_SECRET")
     slack_app_token: str | None = Field(default=None, alias="SLACK_APP_TOKEN")
+
+    @model_validator(mode="after")
+    def validate_openai_mode(self) -> "Settings":
+        fields = (
+            "openai_api_key",
+            "openai_chat_api_key",
+            "openai_embedding_api_key",
+            "openai_base_url",
+            "openai_chat_base_url",
+            "openai_embedding_base_url",
+        )
+        for field_name in fields:
+            value = getattr(self, field_name)
+            if isinstance(value, str):
+                normalized = value.strip() or None
+                setattr(self, field_name, normalized)
+
+        has_mode_a_values = bool(self.openai_base_url or self.openai_api_key)
+        has_split_values = any(
+            (
+                self.openai_chat_base_url,
+                self.openai_embedding_base_url,
+                self.openai_chat_api_key,
+                self.openai_embedding_api_key,
+            )
+        )
+
+        if has_mode_a_values and has_split_values:
+            raise ValueError(
+                "Use exactly one OpenAI mode: Mode A (OPENAI_BASE_URL + OPENAI_API_KEY) or Mode B (OPENAI_CHAT_*/OPENAI_EMBEDDING_*)."
+            )
+
+        if not has_split_values:
+            if not self.openai_base_url or not self.openai_api_key:
+                raise ValueError("Mode A requires OPENAI_BASE_URL and OPENAI_API_KEY.")
+            return self
+
+        if not (
+            self.openai_chat_base_url
+            and self.openai_embedding_base_url
+            and self.openai_chat_api_key
+            and self.openai_embedding_api_key
+        ):
+            raise ValueError(
+                "Mode B requires OPENAI_CHAT_BASE_URL, OPENAI_EMBEDDING_BASE_URL, OPENAI_CHAT_API_KEY, and OPENAI_EMBEDDING_API_KEY."
+            )
+        return self
 
 
 @lru_cache

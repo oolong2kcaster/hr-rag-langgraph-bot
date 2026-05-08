@@ -74,7 +74,7 @@ validate: .env
 
 ask: .env
 	@if [ -z "$(Q)" ]; then echo "Usage: make ask Q='your question'"; exit 1; fi
-	$(COMPOSE) run --rm $(if $(OPENAI_BASE_URL),-e OPENAI_BASE_URL="$(OPENAI_BASE_URL)",) $(APP) python -m app.main ask "$(Q)" $(if $(AGENT),--agent "$(AGENT)",)
+	$(COMPOSE) run --rm $(if $(OPENAI_API_KEY),-e OPENAI_API_KEY="$(OPENAI_API_KEY)",) $(if $(OPENAI_CHAT_API_KEY),-e OPENAI_CHAT_API_KEY="$(OPENAI_CHAT_API_KEY)",) $(if $(OPENAI_EMBEDDING_API_KEY),-e OPENAI_EMBEDDING_API_KEY="$(OPENAI_EMBEDDING_API_KEY)",) $(if $(OPENAI_BASE_URL),-e OPENAI_BASE_URL="$(OPENAI_BASE_URL)",) $(if $(OPENAI_CHAT_BASE_URL),-e OPENAI_CHAT_BASE_URL="$(OPENAI_CHAT_BASE_URL)",) $(if $(OPENAI_EMBEDDING_BASE_URL),-e OPENAI_EMBEDDING_BASE_URL="$(OPENAI_EMBEDDING_BASE_URL)",) $(APP) python -m app.main ask "$(Q)" $(if $(AGENT),--agent "$(AGENT)",)
 
 agents: .env
 	$(COMPOSE) run --rm $(APP) python -m app.main agents
